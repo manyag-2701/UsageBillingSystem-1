@@ -96,11 +96,11 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           element={
             currentUser?.role === 'OPERATOR' ? (
               <OperatorDashboardPage
-  username={currentUser.username}
-  activeTab={operatorActiveTab}
-  onSelectTab={setOperatorActiveTab}
-  onLogout={onLogout}
-  onHomeClick={() => setOperatorActiveTab('PLANS')}
+                username={currentUser.username}
+                activeTab={operatorActiveTab}
+                onSelectTab={setOperatorActiveTab}
+                onLogout={onLogout}
+                onHomeClick={() => setOperatorActiveTab('PLANS')}
 />
             ) : (
               <Navigate to="/login" replace />
