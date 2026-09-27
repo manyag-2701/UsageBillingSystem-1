@@ -1,6 +1,7 @@
 -- =====================================================================
 -- USAGE MEDIATION BILLING SYSTEM - COMPLETE DATABASE SCHEMA (MySQL 8)
 -- =====================================================================
+DROP DATABASE billing;
 
 CREATE DATABASE IF NOT EXISTS billing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE billing;
