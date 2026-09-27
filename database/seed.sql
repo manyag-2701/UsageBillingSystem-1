@@ -1,8 +1,6 @@
 -- =====================================================================
 -- USAGE MEDIATION BILLING SYSTEM - SEED DATA (MySQL 8)
 -- =====================================================================
-DROP DATABASE billing;
-
 USE billing;
 
 -- 1. USERS SEED DATA
