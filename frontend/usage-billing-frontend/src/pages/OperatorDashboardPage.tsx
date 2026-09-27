@@ -6,6 +6,7 @@ import { AddPlanForm } from '../components/AddPlanForm';
 import { EditPlanModal } from '../components/EditPlanModal';
 import { DeletePlanModal } from '../components/DeletePlanModal';
 import { PlanReport } from '../components/PlanReport';
+import { useNavigate } from 'react-router-dom';
 
 interface OperatorDashboardProps {
   username: string;
@@ -29,6 +30,7 @@ export const OperatorDashboardPage: React.FC<OperatorDashboardProps> = ({
   onLogout,
   onHomeClick,
 }) => {
+  const navigate = useNavigate();
   const [showChangePassword, setShowChangePassword] = useState(false);
 
   return (
@@ -41,7 +43,26 @@ export const OperatorDashboardPage: React.FC<OperatorDashboardProps> = ({
       />
 
       {/* Navigation Tab Bar */}
-      <div className="bg-light p-2 d-flex gap-1 border-bottom">
+      <div className="bg-light p-2 d-flex align-items-center gap-1 border-bottom">
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-secondary fw-bold me-2"
+          onClick={() => navigate('/')}
+          title="Back to main page"
+        >
+          <i className="bi bi-arrow-left me-1"></i>
+          BACK
+        </button>
+
+        <button
+          className={`nav-tab-btn ${
+            activeTab === 'PLANS' ? 'active' : ''
+          }`}
+          onClick={() => onSelectTab('PLANS')}
+        >
+          PLANS
+        </button>
+
         <button
           className={`nav-tab-btn ${
             activeTab === 'PLANS' ? 'active' : ''
