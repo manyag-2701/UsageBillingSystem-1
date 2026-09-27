@@ -5,6 +5,13 @@ interface AddPlanFormProps {
   onCancel: () => void;
 }
 
+interface FieldErrors {
+  packageName?: string;
+  dataInGb?: string;
+  monthlyChargeUsd?: string;
+  chargesAfterLimit?: string;
+}
+
 export const AddPlanForm: React.FC<AddPlanFormProps> = ({
   onSuccess,
   onCancel,
@@ -14,58 +21,95 @@ export const AddPlanForm: React.FC<AddPlanFormProps> = ({
   const [monthlyChargeUsd, setMonthlyChargeUsd] = useState('');
   const [chargesAfterLimit, setChargesAfterLimit] = useState('');
 
-  const [errorMsg, setErrorMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const validate = () => {
-    if (!packageName.trim()) {
-      setErrorMsg('Package name is required');
-      return false;
+  // ---------------- VALIDATION FUNCTIONS ----------------
+
+  const validatePackageName = (value: string) => {
+    const trimmedValue = value.trim();
+
+    if (!trimmedValue) {
+      return 'Package name is required';
     }
 
-    if (!/^[a-zA-Z0-9 ]+$/.test(packageName.trim())) {
-      setErrorMsg(
-        'Package name can contain only letters, numbers and spaces'
-      );
-      return false;
+    if (!/^[a-zA-Z0-9 ]+$/.test(trimmedValue)) {
+      return 'Package name can contain only letters, numbers and spaces';
     }
 
-    if (!dataInGb || !/^\d+(\.\d+)?$/.test(dataInGb)) {
-      setErrorMsg('Data allowance must contain numbers only');
-      return false;
-    }
-
-    if (Number(dataInGb) <= 0) {
-      setErrorMsg('Data allowance must be greater than 0');
-      return false;
-    }
-
-    if (
-      !monthlyChargeUsd ||
-      !/^\d+(\.\d+)?$/.test(monthlyChargeUsd)
-    ) {
-      setErrorMsg('Monthly charge must contain numbers only');
-      return false;
-    }
-
-    if (
-      !chargesAfterLimit ||
-      !/^\d+(\.\d+)?$/.test(chargesAfterLimit)
-    ) {
-      setErrorMsg(
-        'Charge after limit must contain numbers only'
-      );
-      return false;
-    }
-
-    return true;
+    return '';
   };
+
+  const validateNumberField = (
+    value: string,
+    fieldName: string,
+    greaterThanZero = false
+  ) => {
+    if (!value) {
+      return `${fieldName} is required`;
+    }
+
+    // Allows whole numbers and decimal numbers, including a mid-typed
+    // trailing decimal point (e.g. "5.") so the user isn't flagged with
+    // an error while still entering digits after the dot.
+    // Examples: 10, 10.5, 0.25, 99.99, 5.
+    if (!/^\d+(\.\d*)?$/.test(value)) {
+      return `${fieldName} must contain numbers and decimal points only`;
+    }
+
+    if (greaterThanZero && Number(value) <= 0) {
+      return `${fieldName} must be greater than 0`;
+    }
+
+    return '';
+  };
+
+  // ---------------- VALIDATE ALL ----------------
+
+  const validate = () => {
+    const errors: FieldErrors = {};
+
+    const packageError = validatePackageName(packageName);
+    if (packageError) {
+      errors.packageName = packageError;
+    }
+
+    const dataError = validateNumberField(
+      dataInGb,
+      'Data allowance',
+      true
+    );
+    if (dataError) {
+      errors.dataInGb = dataError;
+    }
+
+    const monthlyError = validateNumberField(
+      monthlyChargeUsd,
+      'Monthly charge'
+    );
+    if (monthlyError) {
+      errors.monthlyChargeUsd = monthlyError;
+    }
+
+    const limitError = validateNumberField(
+      chargesAfterLimit,
+      'Charge after limit'
+    );
+    if (limitError) {
+      errors.chargesAfterLimit = limitError;
+    }
+
+    setFieldErrors(errors);
+
+    return Object.keys(errors).length === 0;
+  };
+
+  // ---------------- SUBMIT ----------------
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    setErrorMsg('');
     setSuccessMsg('');
 
     if (!validate()) {
@@ -95,9 +139,9 @@ export const AddPlanForm: React.FC<AddPlanFormProps> = ({
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMsg(
-          data.message || 'Failed to add plan'
-        );
+        setFieldErrors({
+          packageName: data.message || 'Failed to add plan',
+        });
         return;
       }
 
@@ -108,30 +152,105 @@ export const AddPlanForm: React.FC<AddPlanFormProps> = ({
       }, 1500);
     } catch (err) {
       console.error(err);
-      setErrorMsg('Failed to add plan');
+
+      setFieldErrors({
+        packageName: 'Failed to add plan',
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  // ---------------- ERROR DISPLAY ----------------
+
+  const renderError = (error?: string) => {
+    if (!error) return null;
+
+    return (
+      <div
+        className="d-flex align-items-center text-danger ms-2 add-plan-error"
+        style={{
+          minWidth: '210px',
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <i
+          className="bi bi-info-circle-fill me-1"
+          style={{
+            fontSize: '15px',
+          }}
+        ></i>
+
+        <span
+          className="fw-semibold"
+          style={{
+            fontSize: '12px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {error}
+        </span>
+      </div>
+    );
+  };
+
+  // ---------------- INPUT STYLE ----------------
+
+  const inputStyle = {
+    width: '280px',
+    flexShrink: 0,
+  };
+
+  // Fixed width, never wraps to a second line — used on every field label
+  // so a validation message next to it can never squeeze it onto multiple lines.
+  const labelStyle = {
+    width: '250px',
+    flexShrink: 0,
+    whiteSpace: 'nowrap' as const,
   };
 
   return (
     <div
       className="p-4"
       style={{
-        maxWidth: '600px',
+        maxWidth: '1000px',
         margin: '0 auto',
       }}
     >
+      {/*
+        Scoped, !important-backed rules. If any global/Bootstrap CSS in
+        the host app has higher effective priority than the plain inline
+        style values below, this guarantees the label still never wraps
+        and the row never breaks onto a second line.
+      */}
+      <style>{`
+        .add-plan-row {
+          display: flex !important;
+          align-items: center !important;
+          flex-wrap: nowrap !important;
+        }
+        .add-plan-label {
+          width: 250px !important;
+          min-width: 250px !important;
+          max-width: 250px !important;
+          flex-shrink: 0 !important;
+          white-space: nowrap !important;
+          display: inline-block !important;
+        }
+        .add-plan-input {
+          width: 280px !important;
+          flex-shrink: 0 !important;
+        }
+        .add-plan-error {
+          flex-shrink: 0 !important;
+          white-space: nowrap !important;
+        }
+      `}</style>
+
       <h5 className="text-center fw-bold mb-4">
         ENTER DETAILS TO ADD NEW PLAN
       </h5>
-
-      {errorMsg && (
-        <div className="alert alert-danger py-2 d-flex align-items-center gap-2">
-          <i className="bi bi-info-circle-fill"></i>
-          <span>{errorMsg}</span>
-        </div>
-      )}
 
       {successMsg && (
         <div className="alert alert-success py-2 d-flex align-items-center gap-2">
@@ -142,78 +261,161 @@ export const AddPlanForm: React.FC<AddPlanFormProps> = ({
 
       <form onSubmit={handleSubmit}>
 
-        <div className="mb-3 row">
-          <label className="col-5 col-form-label fw-bold">
+        {/* PACKAGE NAME */}
+        <div className="mb-3 add-plan-row">
+          <label className="fw-bold add-plan-label" style={labelStyle}>
             PACKAGE NAME:
           </label>
 
-          <div className="col-7">
+          <div
+            className="d-flex align-items-center"
+            style={{ flexWrap: 'nowrap' }}
+          >
             <input
               type="text"
-              className="form-control"
+              className={`form-control add-plan-input ${
+                fieldErrors.packageName ? 'border-danger' : ''
+              }`}
+              style={inputStyle}
               value={packageName}
-              onChange={(e) =>
-                setPackageName(e.target.value)
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+
+                setPackageName(value);
+
+                const error = validatePackageName(value);
+
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  packageName: error || undefined,
+                }));
+              }}
               required
             />
+
+            {renderError(fieldErrors.packageName)}
           </div>
         </div>
 
-        <div className="mb-3 row">
-          <label className="col-5 col-form-label fw-bold">
+        {/* DATA ALLOWANCE */}
+        <div className="mb-3 add-plan-row">
+          <label className="fw-bold add-plan-label" style={labelStyle}>
             DATA ALLOWANCE (GB):
           </label>
 
-          <div className="col-7">
+          <div
+            className="d-flex align-items-center"
+            style={{ flexWrap: 'nowrap' }}
+          >
             <input
               type="text"
-              className="form-control"
+              className={`form-control add-plan-input ${
+                fieldErrors.dataInGb ? 'border-danger' : ''
+              }`}
+              style={inputStyle}
               value={dataInGb}
-              onChange={(e) =>
-                setDataInGb(e.target.value)
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+
+                setDataInGb(value);
+
+                const error = validateNumberField(
+                  value,
+                  'Data allowance',
+                  true
+                );
+
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  dataInGb: error || undefined,
+                }));
+              }}
               required
             />
+
+            {renderError(fieldErrors.dataInGb)}
           </div>
         </div>
 
-        <div className="mb-3 row">
-          <label className="col-5 col-form-label fw-bold">
+        {/* MONTHLY CHARGE */}
+        <div className="mb-3 add-plan-row">
+          <label className="fw-bold add-plan-label" style={labelStyle}>
             MONTHLY CHARGE (USD):
           </label>
 
-          <div className="col-7">
+          <div
+            className="d-flex align-items-center"
+            style={{ flexWrap: 'nowrap' }}
+          >
             <input
               type="text"
-              className="form-control"
+              className={`form-control add-plan-input ${
+                fieldErrors.monthlyChargeUsd ? 'border-danger' : ''
+              }`}
+              style={inputStyle}
               value={monthlyChargeUsd}
-              onChange={(e) =>
-                setMonthlyChargeUsd(e.target.value)
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+
+                setMonthlyChargeUsd(value);
+
+                const error = validateNumberField(
+                  value,
+                  'Monthly charge'
+                );
+
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  monthlyChargeUsd: error || undefined,
+                }));
+              }}
               required
             />
+
+            {renderError(fieldErrors.monthlyChargeUsd)}
           </div>
         </div>
 
-        <div className="mb-3 row">
-          <label className="col-5 col-form-label fw-bold">
+        {/* CHARGE AFTER LIMIT */}
+        <div className="mb-3 add-plan-row">
+          <label className="fw-bold add-plan-label" style={labelStyle}>
             CHARGE AFTER LIMIT (USD/MB):
           </label>
 
-          <div className="col-7">
+          <div
+            className="d-flex align-items-center"
+            style={{ flexWrap: 'nowrap' }}
+          >
             <input
               type="text"
-              className="form-control"
+              className={`form-control add-plan-input ${
+                fieldErrors.chargesAfterLimit ? 'border-danger' : ''
+              }`}
+              style={inputStyle}
               value={chargesAfterLimit}
-              onChange={(e) =>
-                setChargesAfterLimit(e.target.value)
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+
+                setChargesAfterLimit(value);
+
+                const error = validateNumberField(
+                  value,
+                  'Charge after limit'
+                );
+
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  chargesAfterLimit: error || undefined,
+                }));
+              }}
               required
             />
+
+            {renderError(fieldErrors.chargesAfterLimit)}
           </div>
         </div>
 
+        {/* BUTTONS */}
         <div className="text-center mt-4 d-flex justify-content-center gap-3">
 
           <button
